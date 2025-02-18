@@ -3,3 +3,5 @@ requests
 python-dotenv
 tqdm
 streamlit
+huggingface_hub
+FlagEmbedding
