@@ -1,7 +1,15 @@
-import os
+import os, sys, shutil
 from typing import Dict, List, Optional
 from confz import BaseConfig, ConfigSource, FileSource
 from pydantic import Field
+
+CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(CONFIG_DIR, 'config.yaml')
+CONFIG_EXAMPLE_FILE = os.path.join(CONFIG_DIR, 'config.example.yaml')
+
+# 如果配置文件不存在,从示例文件复制
+if not os.path.exists(CONFIG_FILE):
+    shutil.copyfile(CONFIG_EXAMPLE_FILE, CONFIG_FILE)
 
 class EmbeddingModelConfig(BaseConfig):
     name: str
@@ -12,9 +20,10 @@ class ModelsConfig(BaseConfig):
     default_model: str
 
 class PathsConfig(BaseConfig):
-    image_dirs: List[str]
+    image_dirs: Dict
     cache_file: str
     models_dir: str
+    api_embeddings_cache_file: str
 
 class ApiConfig(BaseConfig):
     silicon_api_key: Optional[str] = None
@@ -30,7 +39,7 @@ class Config(BaseConfig):
 
     CONFIG_SOURCES = [
         FileSource(
-            file='config/config.yaml'
+            file=CONFIG_FILE
         ),
     ]
 
@@ -45,11 +54,22 @@ class Config(BaseConfig):
 
     def get_absolute_image_dirs(self) -> List[str]:
         """获取图片目录的绝对路径"""
-        return [os.path.join(self.base_dir, path) for path in self.paths.image_dirs]
+        r = []
+        for v in self.paths.image_dirs.values():
+            if not os.path.isabs(v['path']):
+                r.append(os.path.join(self.base_dir, v['path']))
+            else:
+                r.append(v['path'])
+
+        return r
 
     def get_absolute_cache_file(self) -> str:
         """获取缓存文件的绝对路径"""
         return os.path.join(self.base_dir, self.paths.cache_file)
+
+    def get_abs_api_cache_file(self) -> str:
+        """获取缓存文件的绝对路径"""
+        return os.path.join(self.base_dir, self.paths.api_embeddings_cache_file)
 
     def reload(self) -> None:
         """重新加载配置文件"""
@@ -65,4 +85,4 @@ config = Config()
 def reload_config() -> None:
     """重新加载配置文件"""
     global config
-    config = Config() 
+    config = Config()
