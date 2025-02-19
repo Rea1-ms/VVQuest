@@ -116,7 +116,8 @@ class ImageSearch:
             return file_paths
 
         embeddings = []
-
+        errors = []  # 收集错误
+        # 按照图片文件夹分开循环
         for dirs_k, dirs_v in config.paths.image_dirs.items():
             all_dir = []
 
@@ -124,15 +125,15 @@ class ImageSearch:
             if not os.path.isabs(img_dir): img_dir = os.path.join(config.base_dir, img_dir)
             all_dir = get_all_file_paths(img_dir)
 
-            # ?????????
+            # 构建文件路径列表
             image_files = [
                 f
                 for f in all_dir
                 if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))  # ????????????
             ]
             length = len(image_files)
-            errors = [] # 收集错误
-            # ??????
+
+            # 使用regex替换文件名
             if 'regex' in dirs_v.keys():
                 replace_patterns_regex = {dirs_v['regex']['pattern']: dirs_v['regex']['replacement']}
             else:
@@ -177,6 +178,7 @@ class ImageSearch:
 
                 except Exception as e:
                     print(f"生成嵌入失败 [{filepath}]: {str(e)}")
+                    errors.append(f"[{filepath}] {str(e)}")
                 
         # 保存缓存
         if embeddings:
@@ -185,6 +187,8 @@ class ImageSearch:
             with open(cache_file, 'wb') as f:
                 pickle.dump(embeddings, f)
             self.image_data = embeddings
+
+        # 提出错误
     
     def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
         """余弦相似度计算"""

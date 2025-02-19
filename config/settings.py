@@ -46,7 +46,14 @@ class Config(BaseConfig):
 
     def get_absolute_image_dirs(self) -> List[str]:
         """获取图片目录的绝对路径"""
-        return [v['path'] for v in self.paths.image_dirs.values()]
+        r = []
+        for v in self.paths.image_dirs.values():
+            if not os.path.isabs(v['path']):
+                r.append(os.path.join(self.base_dir, v['path']))
+            else:
+                r.append(v['path'])
+
+        return r
 
     def get_absolute_cache_file(self) -> str:
         """获取缓存文件的绝对路径"""
