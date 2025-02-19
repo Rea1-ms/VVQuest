@@ -1,4 +1,6 @@
 import os
+import sys
+
 import requests
 import pickle
 from config.settings import config
@@ -16,9 +18,19 @@ class EmbeddingService:
         self.current_model = None
         self.mode = 'api'  # 'api' or 'local'
         self.selected_model = None
+        self.embedding_cache = {}
+        self._get_embedding_cache()
 
     def _get_embedding_cache(self):
-        pass
+        if os.path.exists(config.get_abs_api_cache_file()):
+            with open(config.get_abs_api_cache_file(), 'rb') as f:
+                self.embedding_cache = pickle.load(f)
+
+    def save_embedding_cache(self):
+        if sys.gettrace() is not None:
+            print(f'saving cache: {sum(len(i) for i in self.embedding_cache.values())}')
+        with open(config.get_abs_api_cache_file(), 'wb') as f:
+            pickle.dump(self.embedding_cache, f)
 
     def _download_model(self, model_name: str) -> None:
         """下载模型到本地"""
@@ -116,15 +128,24 @@ class EmbeddingService:
         if self.mode == 'api':
             # API 模式
             headers = {"Authorization": f"Bearer {key if key is not None else self.api_key}"}
+            model_name = config.models.embedding_models['bge-m3'].name
             payload = {
                 "input": text,
-                "model": config.models.embedding_models['bge-m3'].name,
+                "model": model_name,
                 "encoding_format": "float"  # 指定返回格式
             }
             try:
-                response = requests.post(self.endpoint, json=payload, headers=headers)
-                response.raise_for_status()  # 抛出详细的HTTP错误
-                embedding = response.json()['data'][0]['embedding']
+                if model_name in self.embedding_cache.keys() and text in self.embedding_cache[model_name].keys():
+                    if sys.gettrace() is not None:
+                        print(f'using cache: {model_name} {text}')
+                    embedding = self.embedding_cache[model_name][text]
+                else:
+                    response = requests.post(self.endpoint, json=payload, headers=headers)
+                    response.raise_for_status()  # 抛出详细的HTTP错误
+                    embedding = response.json()['data'][0]['embedding']
+                    if model_name not in self.embedding_cache.keys():
+                        self.embedding_cache[model_name] = {}
+                    self.embedding_cache[model_name][text] = embedding
             except requests.exceptions.RequestException as e:
                 if hasattr(e.response, 'status_code') and e.response.status_code == 400:
                     # 尝试打印详细的错误信息

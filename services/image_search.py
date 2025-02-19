@@ -4,8 +4,6 @@ import pickle
 import re
 from typing import Optional, List, Dict
 
-from config.settings import Config, UIConfig
-
 from config.settings import config
 
 from services.embedding_service import EmbeddingService
@@ -33,7 +31,7 @@ class ImageSearch:
                         full_path = os.path.join(config.get_absolute_image_dirs()[0], item['filename'])
                         # 添加filepath字段
                         item['filepath'] = full_path
-                    
+
                     if os.path.exists(full_path):
                         valid_embeddings.append(item)
                     
@@ -71,7 +69,7 @@ class ImageSearch:
                 self.embedding_service.current_model = None
             # 确保清空缓存
             self.image_data = None
-        
+
     def download_model(self) -> None:
         """下载选中的模型"""
         self.embedding_service.download_selected_model()
@@ -116,24 +114,25 @@ class ImageSearch:
                     # 将绝对路径添加到列表中
                     file_paths.append(file_path)
             return file_paths
-        all_dir = []
-        for img_dir in [v['path'] for v in UIConfig().image_dirs.values()]:
-            if not os.path.isabs(img_dir): img_dir = os.path.join(Config.BASE_DIR, img_dir)
-            all_dir.extend(get_all_file_paths(img_dir))
 
-        # 获取图片文件
-        image_files = [
-            f
-            for f in all_dir
-            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))  # 支持更多图片格式
-        ]
-        
-        # 生成缓存
         embeddings = []
-        errors = []  # 收集错误
-        error_count = 0  # 错误计数
-        length = len(image_files)
-        for dirs_k, dirs_v in UIConfig().image_dirs.items():
+
+        for dirs_k, dirs_v in config.paths.image_dirs.items():
+            all_dir = []
+
+            img_dir = dirs_v['path']
+            if not os.path.isabs(img_dir): img_dir = os.path.join(config.base_dir, img_dir)
+            all_dir = get_all_file_paths(img_dir)
+
+            # ?????????
+            image_files = [
+                f
+                for f in all_dir
+                if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))  # ????????????
+            ]
+            length = len(image_files)
+            errors = [] # 收集错误
+            # ??????
             if 'regex' in dirs_v.keys():
                 replace_patterns_regex = {dirs_v['regex']['pattern']: dirs_v['regex']['replacement']}
             else:
@@ -143,7 +142,7 @@ class ImageSearch:
 
             for index, filepath in enumerate(image_files):
                 try:
-                    if not os.path.isabs(filepath): filepath = os.path.join(Config.BASE_DIR, filepath)
+                    if not os.path.isabs(filepath): filepath = os.path.join(config.base_dir, filepath)
                     filename = os.path.splitext(os.path.basename(filepath))[0]
 
                     full_filename = None
@@ -172,9 +171,12 @@ class ImageSearch:
                         })
 
                     progress_bar.progress((index + 1) / length, text=f"处理图片 {index + 1}/{length}")
+
+                    if index%20==0:
+                        self.embedding_service.save_embedding_cache()
+
                 except Exception as e:
                     print(f"生成嵌入失败 [{filepath}]: {str(e)}")
-
                 
         # 保存缓存
         if embeddings:

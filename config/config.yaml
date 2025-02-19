@@ -1,5 +1,5 @@
 api:
-  silicon_api_key: sk-lualdkqgaattrpzmftvywrbyvqphfocbnhdzijhfvsmlimot
+  silicon_api_key:
 misc:
   adapt_for_old_version: true
 models:
@@ -15,7 +15,10 @@ models:
       name: BAAI/bge-small-zh-v1.5
       performance: low
 paths:
+  api_embeddings_cache_file: data/api_embeddings_cache.pkl
   cache_file: data/embeddings.pkl
   image_dirs:
-  - data/images
+    default:
+      path: data/images
+      type: vv
   models_dir: data/models

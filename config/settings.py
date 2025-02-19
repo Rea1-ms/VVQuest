@@ -12,9 +12,10 @@ class ModelsConfig(BaseConfig):
     default_model: str
 
 class PathsConfig(BaseConfig):
-    image_dirs: List[str]
+    image_dirs: Dict
     cache_file: str
     models_dir: str
+    api_embeddings_cache_file: str
 
 class ApiConfig(BaseConfig):
     silicon_api_key: Optional[str] = None
@@ -45,11 +46,15 @@ class Config(BaseConfig):
 
     def get_absolute_image_dirs(self) -> List[str]:
         """获取图片目录的绝对路径"""
-        return [os.path.join(self.base_dir, path) for path in self.paths.image_dirs]
+        return [v['path'] for v in self.paths.image_dirs.values()]
 
     def get_absolute_cache_file(self) -> str:
         """获取缓存文件的绝对路径"""
         return os.path.join(self.base_dir, self.paths.cache_file)
+
+    def get_abs_api_cache_file(self) -> str:
+        """获取缓存文件的绝对路径"""
+        return os.path.join(self.base_dir, self.paths.api_embeddings_cache_file)
 
     def reload(self) -> None:
         """重新加载配置文件"""
@@ -65,4 +70,4 @@ config = Config()
 def reload_config() -> None:
     """重新加载配置文件"""
     global config
-    config = Config() 
+    config = Config()
