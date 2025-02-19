@@ -1,7 +1,10 @@
-import os
+import os, sys, shutil
 from typing import Dict, List, Optional
 from confz import BaseConfig, ConfigSource, FileSource
 from pydantic import Field
+
+if not os.path.exists('config/config.yaml'):
+    shutil.copyfile('config/config.example.yaml', 'config/config.yaml')
 
 class EmbeddingModelConfig(BaseConfig):
     name: str
