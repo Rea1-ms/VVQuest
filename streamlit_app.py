@@ -66,6 +66,8 @@ if 'search_engine' not in st.session_state:
         mode=st.session_state.mode,
         model_name=st.session_state.model_name
     )
+if 'has_cache' not in st.session_state:
+    st.session_state.has_cache = st.session_state.search_engine.has_cache()
 
 # 搜索函数
 def search():
@@ -145,6 +147,8 @@ def on_generate_cache():
         progress_bar = st.progress(0)
         st.session_state.search_engine.generate_cache(progress_bar)
         progress_bar.empty()
+        # 强制重新检查缓存状态
+        st.session_state.has_cache = st.session_state.search_engine.has_cache()
     st.success('缓存生成完成！')
 
 # 侧边栏搜索区域

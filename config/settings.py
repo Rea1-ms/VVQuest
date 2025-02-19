@@ -3,8 +3,13 @@ from typing import Dict, List, Optional
 from confz import BaseConfig, ConfigSource, FileSource
 from pydantic import Field
 
-if not os.path.exists('config/config.yaml'):
-    shutil.copyfile('config/config.example.yaml', 'config/config.yaml')
+CONFIG_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(CONFIG_DIR, 'config.yaml')
+CONFIG_EXAMPLE_FILE = os.path.join(CONFIG_DIR, 'config.example.yaml')
+
+# 如果配置文件不存在,从示例文件复制
+if not os.path.exists(CONFIG_FILE):
+    shutil.copyfile(CONFIG_EXAMPLE_FILE, CONFIG_FILE)
 
 class EmbeddingModelConfig(BaseConfig):
     name: str
@@ -34,7 +39,7 @@ class Config(BaseConfig):
 
     CONFIG_SOURCES = [
         FileSource(
-            file='config/config.yaml'
+            file=CONFIG_FILE
         ),
     ]
 

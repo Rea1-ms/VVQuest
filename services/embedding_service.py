@@ -22,14 +22,30 @@ class EmbeddingService:
         self._get_embedding_cache()
 
     def _get_embedding_cache(self):
-        if os.path.exists(config.get_abs_api_cache_file()):
-            with open(config.get_abs_api_cache_file(), 'rb') as f:
+        """获取嵌入缓存"""
+        if self.mode == 'api':
+            cache_file = config.get_abs_api_cache_file()
+        else:
+            if not self.selected_model:
+                return
+            cache_file = config.get_absolute_cache_file().replace('.pkl', f'_{self.selected_model}.pkl')
+            
+        if os.path.exists(cache_file):
+            with open(cache_file, 'rb') as f:
                 self.embedding_cache = pickle.load(f)
 
     def save_embedding_cache(self):
+        """保存嵌入缓存"""
+        if self.mode == 'api':
+            cache_file = config.get_abs_api_cache_file()
+        else:
+            if not self.selected_model:
+                return
+            cache_file = config.get_absolute_cache_file().replace('.pkl', f'_{self.selected_model}.pkl')
+            
         if sys.gettrace() is not None:
             print(f'saving cache: {sum(len(i) for i in self.embedding_cache.values())}')
-        with open(config.get_abs_api_cache_file(), 'wb') as f:
+        with open(cache_file, 'wb') as f:
             pickle.dump(self.embedding_cache, f)
 
     def _download_model(self, model_name: str) -> None:

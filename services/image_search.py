@@ -47,10 +47,9 @@ class ImageSearch:
                 
     def _get_cache_file(self) -> str:
         """获取当前模式的缓存文件路径"""
-        cache_key = f"{self.embedding_service.mode}"
-        if self.embedding_service.mode == 'local' and self.embedding_service.selected_model:
-            cache_key += f"_{self.embedding_service.selected_model}"
-        return config.get_absolute_cache_file().replace('.pkl', f'_{cache_key}.pkl')
+        if self.embedding_service.selected_model:
+            return config.get_absolute_cache_file().replace('.pkl', f'_{self.embedding_service.selected_model}.pkl')
+        return config.get_absolute_cache_file()
         
     def set_mode(self, mode: str, model_name: Optional[str] = None) -> None:
         """切换搜索模式和模型"""
