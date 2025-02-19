@@ -26,6 +26,18 @@ pip install -r requirements.txt
 python -m streamlit run streamlit_app.py
 ```
 
+## 添加额外图片
+修改 config/config.yaml 中的 paths.image_dirs，添加示例配置如下：
+
+```yaml
+pic_example:
+  path: 'path/to/your/images'
+  regex:
+    pattern: '^[^-]*-'
+    replacement: ""
+  type: "名称"
+```
+
 ## Demo
 
 <img width="256" alt="3bfb772e239f3437a13d46252aab1e1d" src="https://github.com/user-attachments/assets/d7e02f8f-205d-42ef-9c80-49f98aff64a6" />
