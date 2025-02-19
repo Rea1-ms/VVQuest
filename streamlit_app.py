@@ -116,7 +116,9 @@ def on_download_model():
 def on_generate_cache():
     """生成缓存回调"""
     with st.spinner('正在生成表情包缓存...'):
-        st.session_state.search_engine.generate_cache()
+        progress_bar = st.progress(0)
+        st.session_state.search_engine.generate_cache(progress_bar)
+        progress_bar.empty()
     st.success('缓存生成完成！')
 
 # 侧边栏搜索区域
@@ -211,9 +213,10 @@ with st.sidebar:
             key="generate_cache_btn",
             use_container_width=True
         ):
-            with st.spinner('正在生成表情包缓存...'):
-                st.session_state.search_engine.generate_cache()
-            st.success('缓存生成完成！')
+            on_generate_cache()
+            # with st.spinner('正在生成表情包缓存...'):
+            #     st.session_state.search_engine.generate_cache()
+            # st.success('缓存生成完成！')
     elif st.session_state.mode == 'local':
         if not st.session_state.search_engine.embedding_service.is_model_downloaded(st.session_state.model_name):
             st.error("请先在上方下载选中的模型")

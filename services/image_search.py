@@ -21,7 +21,10 @@ class ImageSearch:
                     cached_data = pickle.load(f)
                 valid_embeddings = []
                 for item in cached_data:
-                    full_path = os.path.join(Config.IMAGE_DIR, item['filename'])
+                    if 'filepath' in item.keys():
+                        full_path = item['filepath']
+                    else:
+                        full_path = os.path.join(Config.IMAGE_DIR, item['filename'])
                     if os.path.exists(full_path):
                         valid_embeddings.append(item)
                     
@@ -67,7 +70,7 @@ class ImageSearch:
         """检查是否有可用的缓存"""
         return self.image_data is not None
     
-    def generate_cache(self) -> None:
+    def generate_cache(self, progress_bar) -> None:
         """生成嵌入缓存"""
         if self.embedding_service.mode == 'local':
             self.load_model()  # 确保模型已加载
@@ -75,20 +78,28 @@ class ImageSearch:
         if not os.path.exists(Config.IMAGE_DIR):
             os.makedirs(Config.IMAGE_DIR, exist_ok=True)
             
+        # 获取所有路径
+        all_dir = []
+        for img_dir in Config.IMAGE_DIRS:
+            all_dir.extend([entry.path for entry in os.scandir(img_dir)])
+
         # 获取图片文件
         image_files = [
-            os.path.splitext(f)[0]
-            for f in os.listdir(Config.IMAGE_DIR)
+            f
+            for f in all_dir
             if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))  # 支持更多图片格式
         ]
         
         # 生成嵌入
         embeddings = []
-        for filename in image_files:
+        length = len(image_files)
+        for index, filepath in enumerate(image_files):
             try:
+                filename = os.path.splitext(os.path.basename(filepath))[0]
+
                 full_filename = None
                 for ext in ['.png', '.jpg', '.jpeg', '.gif']:
-                    if os.path.exists(os.path.join(Config.IMAGE_DIR, filename + ext)):
+                    if os.path.exists(os.path.join(os.path.dirname(filepath), filename + ext)):
                         full_filename = filename + ext
                         break
                 
@@ -96,10 +107,13 @@ class ImageSearch:
                     embedding = self.embedding_service.get_embedding(filename)
                     embeddings.append({
                         "filename": full_filename,
+                        "filepath": filepath,
                         "embedding": embedding
                     })
+
+                progress_bar.progress((index + 1) / length, text=f"处理图片 {index + 1}/{length}")
             except Exception as e:
-                print(f"生成嵌入失败 [{filename}]: {str(e)}")
+                print(f"生成嵌入失败 [{filepath}]: {str(e)}")
                 
         # 保存缓存
         if embeddings:
@@ -126,7 +140,10 @@ class ImageSearch:
         
         similarities = []
         for img in self.image_data:
-            full_path = os.path.join(Config.IMAGE_DIR, img["filename"])
+            if 'filepath' not in img.keys() and Config.ADAPT_FOR_OLD_VERSION:
+                full_path = os.path.join(Config.IMAGE_DIR, img["filename"])
+            else:
+                full_path = img['filepath']
             if os.path.exists(full_path):  # 再次验证文件存在
                 similarities.append((full_path, self._cosine_similarity(query_embedding, img["embedding"])))
         
