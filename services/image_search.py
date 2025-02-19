@@ -77,7 +77,12 @@ class ImageSearch:
             
         if not os.path.exists(Config.IMAGE_DIR):
             os.makedirs(Config.IMAGE_DIR, exist_ok=True)
-            
+
+        self._try_load_cache()
+        generated_files = []
+        if self.image_data is not None:
+            generated_files = [i['filepath'] for i in self.image_data]
+
         # 获取所有路径
         all_dir = []
         for img_dir in Config.IMAGE_DIRS:
@@ -104,7 +109,11 @@ class ImageSearch:
                         break
                 
                 if full_filename:
-                    embedding = self.embedding_service.get_embedding(filename)
+                    if filepath in generated_files:
+                        # 使用已经存在的embedding
+                        embedding = self.image_data[generated_files.index(filepath)]['embedding']
+                    else:
+                        embedding = self.embedding_service.get_embedding(filename)
                     embeddings.append({
                         "filename": full_filename,
                         "filepath": filepath,
