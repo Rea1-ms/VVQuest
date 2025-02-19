@@ -1,5 +1,6 @@
 import os
 import requests
+import pickle
 from config.settings import Config
 from typing import List, Optional, Union
 import numpy as np
@@ -15,7 +16,10 @@ class EmbeddingService:
         self.current_model = None
         self.mode = 'api'  # 'api' or 'local'
         self.selected_model = None
-        
+
+    def _get_embedding_cache(self):
+        pass
+
     def _download_model(self, model_name: str) -> None:
         """下载模型到本地"""
         model_info = Config.EMBEDDING_MODELS.get(model_name)

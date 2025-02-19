@@ -1,8 +1,9 @@
 import os
 import numpy as np
 import pickle
+import re
 from typing import Optional, List, Dict
-from config.settings import Config
+from config.settings import Config, UIConfig
 from services.embedding_service import EmbeddingService
 
 class ImageSearch:
@@ -84,9 +85,21 @@ class ImageSearch:
             generated_files = [i['filepath'] for i in self.image_data]
 
         # 获取所有路径
+        def get_all_file_paths(folder_path):
+            # 用于存储所有文件的绝对路径
+            file_paths = []
+            # 使用os.walk()遍历文件夹及其子文件夹
+            for root, directories, files in os.walk(folder_path):
+                for filename in files:
+                    # 构建文件的绝对路径
+                    file_path = os.path.join(root, filename)
+                    # 将绝对路径添加到列表中
+                    file_paths.append(file_path)
+            return file_paths
         all_dir = []
-        for img_dir in Config.IMAGE_DIRS:
-            all_dir.extend([entry.path for entry in os.scandir(img_dir)])
+        for img_dir in [v['path'] for v in UIConfig().image_dirs.values()]:
+            if not os.path.isabs(img_dir): img_dir = os.path.join(Config.BASE_DIR, img_dir)
+            all_dir.extend(get_all_file_paths(img_dir))
 
         # 获取图片文件
         image_files = [
@@ -98,31 +111,47 @@ class ImageSearch:
         # 生成嵌入
         embeddings = []
         length = len(image_files)
-        for index, filepath in enumerate(image_files):
-            try:
-                filename = os.path.splitext(os.path.basename(filepath))[0]
+        for dirs_k, dirs_v in UIConfig().image_dirs.items():
+            if 'regex' in dirs_v.keys():
+                replace_patterns_regex = {dirs_v['regex']['pattern']: dirs_v['regex']['replacement']}
+            else:
+                replace_patterns_regex = None
 
-                full_filename = None
-                for ext in ['.png', '.jpg', '.jpeg', '.gif']:
-                    if os.path.exists(os.path.join(os.path.dirname(filepath), filename + ext)):
-                        full_filename = filename + ext
-                        break
-                
-                if full_filename:
-                    if filepath in generated_files:
-                        # 使用已经存在的embedding
-                        embedding = self.image_data[generated_files.index(filepath)]['embedding']
-                    else:
-                        embedding = self.embedding_service.get_embedding(filename)
-                    embeddings.append({
-                        "filename": full_filename,
-                        "filepath": filepath,
-                        "embedding": embedding
-                    })
+            image_type = dirs_v.setdefault('type', 'None')
 
-                progress_bar.progress((index + 1) / length, text=f"处理图片 {index + 1}/{length}")
-            except Exception as e:
-                print(f"生成嵌入失败 [{filepath}]: {str(e)}")
+            for index, filepath in enumerate(image_files):
+                try:
+                    if not os.path.isabs(filepath): filepath = os.path.join(Config.BASE_DIR, filepath)
+                    filename = os.path.splitext(os.path.basename(filepath))[0]
+
+                    full_filename = None
+                    for ext in ['.png', '.jpg', '.jpeg', '.gif']:
+                        if os.path.exists(os.path.join(os.path.dirname(filepath), filename + ext)):
+                            full_filename = filename + ext
+                            break
+
+                    if full_filename:
+                        if filepath in generated_files:
+                            # 使用已经存在的embedding
+                            embedding = self.image_data[generated_files.index(filepath)]['embedding']
+                            embedding_name = self.image_data[generated_files.index(filepath)]['embedding_name']
+                        else:
+                            embedding_name = filename
+                            if replace_patterns_regex is not None:
+                                for pattern, replacement in replace_patterns_regex.items():
+                                    embedding_name = re.sub(pattern, replacement, embedding_name)
+                            embedding = self.embedding_service.get_embedding(embedding_name)
+                        embeddings.append({
+                            "filename": full_filename,
+                            "filepath": filepath,
+                            "embedding": embedding,
+                            "embedding_name": embedding_name,
+                            "type": image_type if image_type is not None else 'Normal'
+                        })
+
+                    progress_bar.progress((index + 1) / length, text=f"处理图片 {index + 1}/{length}")
+                except Exception as e:
+                    print(f"生成嵌入失败 [{filepath}]: {str(e)}")
                 
         # 保存缓存
         if embeddings:
