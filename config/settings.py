@@ -1,45 +1,68 @@
 import os
-from dotenv import load_dotenv
+from typing import Dict, List, Optional
+from confz import BaseConfig, ConfigSource, FileSource
+from pydantic import Field
 
-load_dotenv()
+class EmbeddingModelConfig(BaseConfig):
+    name: str
+    performance: str
 
-class Config:
-    # API 配置
-    SILICON_API_KEY = os.getenv("SILICON_API_KEY")
-    
-    # 模型配置
-    EMBEDDING_MODELS = {
-        'bge-m3': {
-            'name': 'BAAI/bge-m3',
-            'size': '1.7GB',
-            'performance': '高',
-            'description': '高性能多语言模型'
-        },
-        'bge-large-zh-v1.5': {
-            'name': 'BAAI/bge-large-zh-v1.5',
-            'size': '1.2GB', 
-            'performance': '中',
-            'description': '中文优化模型'
-        },
-        'bge-small-zh-v1.5': {
-            'name': 'BAAI/bge-small-zh-v1.5',
-            'size': '400MB',
-            'performance': '低',
-            'description': '轻量级中文模型'
-        }
-    }
-    
-    DEFAULT_MODEL = 'bge-large-zh-v1.5'
-    
-    # 路径配置
-    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-    IMAGE_DIR = os.path.join(BASE_DIR, 'data/images')
-    IMAGE_DIRS = [os.path.join(BASE_DIR, 'data/images')]
-    CACHE_FILE = os.path.join(BASE_DIR, 'data/embeddings.pkl')
-    MODELS_DIR = os.path.join(BASE_DIR, 'data/models')
-    ADAPT_FOR_OLD_VERSION = True
-    
-    @classmethod
-    def get_model_path(cls, model_name: str) -> str:
+class ModelsConfig(BaseConfig):
+    embedding_models: Dict[str, EmbeddingModelConfig]
+    default_model: str
+
+class PathsConfig(BaseConfig):
+    image_dirs: List[str]
+    cache_file: str
+    models_dir: str
+
+class ApiConfig(BaseConfig):
+    silicon_api_key: Optional[str] = None
+
+class MiscConfig(BaseConfig):
+    adapt_for_old_version: bool
+
+class Config(BaseConfig):
+    api: ApiConfig
+    models: ModelsConfig
+    paths: PathsConfig
+    misc: MiscConfig
+
+    CONFIG_SOURCES = [
+        FileSource(
+            file='config/config.yaml'
+        ),
+    ]
+
+    @property
+    def base_dir(self) -> str:
+        """获取项目根目录"""
+        return os.path.dirname(os.path.dirname(__file__))
+
+    def get_model_path(self, model_name: str) -> str:
         """获取模型保存路径"""
-        return os.path.join(cls.MODELS_DIR, model_name.replace('/', '_')) 
+        return os.path.join(self.base_dir, self.paths.models_dir, model_name.replace('/', '_'))
+
+    def get_absolute_image_dirs(self) -> List[str]:
+        """获取图片目录的绝对路径"""
+        return [os.path.join(self.base_dir, path) for path in self.paths.image_dirs]
+
+    def get_absolute_cache_file(self) -> str:
+        """获取缓存文件的绝对路径"""
+        return os.path.join(self.base_dir, self.paths.cache_file)
+
+    def reload(self) -> None:
+        """重新加载配置文件"""
+        new_config = Config()
+        self.api = new_config.api
+        self.models = new_config.models
+        self.paths = new_config.paths
+        self.misc = new_config.misc
+
+# 创建全局配置实例
+config = Config()
+
+def reload_config() -> None:
+    """重新加载配置文件"""
+    global config
+    config = Config() 

@@ -1,7 +1,8 @@
 import streamlit as st
 import random
+import yaml
 from services.image_search import ImageSearch
-from config.settings import Config
+from config.settings import config, reload_config
 
 # 页面配置
 st.set_page_config(
@@ -10,6 +11,31 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+def save_config_yaml(api_key: str) -> None:
+    """保存API key到config.yaml"""
+    config_path = 'config/config.yaml'
+    try:
+        # 读取当前配置
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_data = yaml.safe_load(f)
+        
+        # 更新API key
+        config_data['api']['silicon_api_key'] = api_key
+        
+        # 保存配置
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config_data, f, allow_unicode=True)
+            
+        # 重新加载配置
+        reload_config()
+        
+        # 更新EmbeddingService的API key
+        if st.session_state.search_engine:
+            st.session_state.search_engine.embedding_service.api_key = api_key
+            
+    except Exception as e:
+        st.error(f"保存配置失败: {str(e)}")
 
 # 搜索框提示语列表
 SEARCH_PLACEHOLDERS = [
@@ -30,11 +56,11 @@ if 'search_query' not in st.session_state:
 if 'n_results' not in st.session_state:
     st.session_state.n_results = 5
 if 'api_key' not in st.session_state:
-    st.session_state.api_key = Config.SILICON_API_KEY
+    st.session_state.api_key = config.api.silicon_api_key
 if 'mode' not in st.session_state:
     st.session_state.mode = 'api'
 if 'model_name' not in st.session_state:
-    st.session_state.model_name = Config.DEFAULT_MODEL
+    st.session_state.model_name = config.models.default_model
 if 'search_engine' not in st.session_state:
     st.session_state.search_engine = ImageSearch(
         mode=st.session_state.mode,
@@ -43,7 +69,6 @@ if 'search_engine' not in st.session_state:
 
 # 搜索函数
 def search():
-    # 清除之前的结果
     if not st.session_state.search_query:
         st.session_state.results = []
         return []
@@ -64,7 +89,6 @@ def search():
 
 # 回调函数
 def on_input_change():
-    # 清除之前的搜索结果
     st.session_state.results = []
     st.session_state.search_query = st.session_state.user_input
     if st.session_state.search_query:
@@ -73,18 +97,20 @@ def on_input_change():
 def on_slider_change():
     st.session_state.n_results = st.session_state.n_results_widget
     if st.session_state.search_query:
-        # 重新搜索以更新结果数量
         st.session_state.results = search()
 
 def on_api_key_change():
-    st.session_state.api_key = st.session_state.api_key_input
+    new_key = st.session_state.api_key_input
+    if new_key != st.session_state.api_key:
+        st.session_state.api_key = new_key
+        # 保存到配置文件
+        save_config_yaml(new_key)
 
 def on_mode_change():
     new_mode = st.session_state.mode_widget
     if new_mode != st.session_state.mode:
         st.session_state.mode = new_mode
         try:
-            # 切换到本地模式时，使用当前选中的模型
             if new_mode == 'local':
                 st.session_state.search_engine.set_mode(new_mode, st.session_state.model_name)
             else:
@@ -140,10 +166,10 @@ with st.sidebar:
         # 生成模型选项和显示名称的映射
         model_options = []
         model_display_names = {}
-        for model_id, info in Config.EMBEDDING_MODELS.items():
+        for model_id, info in config.models.embedding_models.items():
             downloaded = st.session_state.search_engine.embedding_service.is_model_downloaded(model_id)
             status = "✅" if downloaded else "⬇️"
-            display_name = f"{model_id} [{info['performance']}性能, {info['size']}] {status}"
+            display_name = f"{model_id} [{info.performance}] {status}"
             model_options.append(display_name)
             model_display_names[model_id] = display_name
         
@@ -214,9 +240,6 @@ with st.sidebar:
             use_container_width=True
         ):
             on_generate_cache()
-            # with st.spinner('正在生成表情包缓存...'):
-            #     st.session_state.search_engine.generate_cache()
-            # st.success('缓存生成完成！')
     elif st.session_state.mode == 'local':
         if not st.session_state.search_engine.embedding_service.is_model_downloaded(st.session_state.model_name):
             st.error("请先在上方下载选中的模型")
@@ -248,50 +271,18 @@ with st.sidebar:
         1, 30, 
         value=st.session_state.n_results,
         key="n_results_widget",
-        on_change=on_slider_change,
-        disabled=not can_search
-    )
-    
-    search_button = st.button(
-        "搜索", 
-        on_click=on_input_change,
-        disabled=not can_search,
-        use_container_width=True
+        on_change=on_slider_change
     )
 
-# 主区域显示
-if not st.session_state.get("results"):
-    # 初始页面显示欢迎信息
-    st.title("👋 Welcome！")
-    st.markdown("""
-                在左侧的侧边栏输入或者点击左上角的箭头以开始。
-                
-                支持两种搜索模式:
-                1. API模式: 需要网络连接和API密钥
-                2. 本地模式: 需要下载模型
-                
-                ## 使用流程:
-                1. 选择搜索模式（API/本地）
-                2. 如果选择本地模式，需要先下载选中的模型
-                3. 生成表情包缓存
-                4. 开始搜索
-                
-                ## 如何添加自己的表情包？
-                1. 在data/images下添加表情包，同时重命名文件名为你希望表情包所表达的意思
-                2. 点击重新生成缓存按钮，生成新的表情包缓存
-                3. 开始搜索
-                """)
-else:
-    # 显示搜索结果
-    results = st.session_state.results
-    if results:
-        # 使用列布局显示图片
-        cols = st.columns(3)  # 在一行中显示3张图片
-        for i, result in enumerate(results):
-            with cols[i % 3]:
-                st.image(result, use_container_width=True)
-    else:
-        st.sidebar.warning("未找到匹配的表情包") 
+# 主区域显示搜索结果
+if 'results' in st.session_state and st.session_state.results:
+    # 计算每行显示的图片数量
+    cols = st.columns(3)
+    for idx, img_path in enumerate(st.session_state.results):
+        with cols[idx % 3]:
+            st.image(img_path)
+elif st.session_state.search_query:
+    st.info("未找到匹配的表情包")
 
 # 添加页脚
 st.markdown("---")

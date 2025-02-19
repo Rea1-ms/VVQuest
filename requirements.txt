@@ -5,3 +5,4 @@ tqdm
 streamlit
 huggingface_hub
 FlagEmbedding
+confz
