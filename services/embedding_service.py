@@ -1,7 +1,7 @@
 import os
 import requests
 import pickle
-from config.settings import Config
+from config.settings import config
 from typing import List, Optional, Union
 import numpy as np
 from FlagEmbedding import BGEM3FlagModel
@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 class EmbeddingService:
     def __init__(self):
-        self.api_key = Config.SILICON_API_KEY
+        self.api_key = config.api.silicon_api_key
         self.endpoint = "https://api.siliconflow.com/v1/embeddings" 
         self.local_models = {}
         self.current_model = None
@@ -22,16 +22,16 @@ class EmbeddingService:
 
     def _download_model(self, model_name: str) -> None:
         """下载模型到本地"""
-        model_info = Config.EMBEDDING_MODELS.get(model_name)
+        model_info = config.models.embedding_models.get(model_name)
         if not model_info:
             raise ValueError(f"未知的模型: {model_name}")
             
-        model_path = Config.get_model_path(model_name)
+        model_path = config.get_model_path(model_name)
         if not os.path.exists(model_path):
             os.makedirs(model_path, exist_ok=True)
             print(f"正在下载模型 {model_name}...")
             snapshot_download(
-                repo_id=model_info['name'],
+                repo_id=model_info.name,
                 local_dir=model_path,
                 local_dir_use_symlinks=False
             )
@@ -40,7 +40,7 @@ class EmbeddingService:
         """加载本地模型"""
         try:
             if model_name not in self.local_models:
-                model_path = Config.get_model_path(model_name)
+                model_path = config.get_model_path(model_name)
                 if not os.path.exists(model_path):
                     raise RuntimeError(f"模型 {model_name} 尚未下载")
                 print(f"正在加载模型 {model_name}...")
@@ -56,7 +56,7 @@ class EmbeddingService:
             if model_name in self.local_models:
                 del self.local_models[model_name]
             # 删除可能损坏的模型文件
-            model_path = Config.get_model_path(model_name)
+            model_path = config.get_model_path(model_name)
             if os.path.exists(model_path):
                 import shutil
                 shutil.rmtree(model_path)
@@ -70,7 +70,7 @@ class EmbeddingService:
         self.mode = mode
         if mode == 'local':
             if model_name is None:
-                model_name = Config.DEFAULT_MODEL
+                model_name = config.models.default_model
             self.selected_model = model_name
             # 如果模型已下载，尝试加载
             if self.is_model_downloaded(model_name):
@@ -101,7 +101,7 @@ class EmbeddingService:
             
     def is_model_downloaded(self, model_name: str) -> bool:
         """检查模型是否已下载"""
-        model_path = Config.get_model_path(model_name)
+        model_path = config.get_model_path(model_name)
         return os.path.exists(model_path)
             
     @staticmethod
@@ -118,7 +118,7 @@ class EmbeddingService:
             headers = {"Authorization": f"Bearer {key if key is not None else self.api_key}"}
             payload = {
                 "input": text,
-                "model": Config.EMBEDDING_MODELS['bge-m3']['name'],
+                "model": config.models.embedding_models['bge-m3'].name,
                 "encoding_format": "float"  # 指定返回格式
             }
             try:
