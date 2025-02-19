@@ -17,7 +17,7 @@ VVQuest 是一个能够通过自然语言描述检索合适的张维为表情包
 ```bash
 pip install -r requirements.txt
 ```
-3. 在.env文件中设置SILICON_API_KEY （可选，也可在webui中设置），或是使用本地嵌入模型
+3. 获取API_KEY（可选，可使用本地模型）
 
     注册Silicon Flow账号后在[此处](https://cloud.siliconflow.cn/account/ak)获取
 
@@ -27,7 +27,7 @@ python -m streamlit run streamlit_app.py
 ```
 
 ## 添加额外图片
-修改 config/config.yaml 中的 paths.image_dirs，添加示例配置如下：
+修改 `config/config.yaml` 中的 `paths.image_dirs`，添加示例配置如下：
 
 ```yaml
 pic_example:
