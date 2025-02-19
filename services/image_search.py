@@ -189,6 +189,10 @@ class ImageSearch:
             self.image_data = embeddings
 
         # 提出错误
+        if errors:
+            error_summary = "\n".join(errors)
+            print(error_summary)
+            raise RuntimeError(error_summary)
     
     def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
         """余弦相似度计算"""
