@@ -34,7 +34,7 @@ class Config:
     # 路径配置
     BASE_DIR = os.path.dirname(os.path.dirname(__file__))
     IMAGE_DIR = os.path.join(BASE_DIR, 'data/images')
-    IMAGE_DIRS = [os.path.join(BASE_DIR, 'data/images'), os.path.join(BASE_DIR, 'data/images_vv2')]
+    IMAGE_DIRS = [os.path.join(BASE_DIR, 'data/images')]
     CACHE_FILE = os.path.join(BASE_DIR, 'data/embeddings.pkl')
     MODELS_DIR = os.path.join(BASE_DIR, 'data/models')
     ADAPT_FOR_OLD_VERSION = True
