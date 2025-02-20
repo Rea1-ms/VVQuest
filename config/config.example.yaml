@@ -1,0 +1,24 @@
+api:
+  silicon_api_key:
+misc:
+  adapt_for_old_version: true
+models:
+  default_model: bge-large-zh-v1.5
+  embedding_models:
+    bge-large-zh-v1.5:
+      name: BAAI/bge-large-zh-v1.5
+      performance: medium
+    bge-m3:
+      name: BAAI/bge-m3
+      performance: high
+    bge-small-zh-v1.5:
+      name: BAAI/bge-small-zh-v1.5
+      performance: low
+paths:
+  api_embeddings_cache_file: data/api_embeddings_cache.pkl
+  cache_file: data/embeddings.pkl
+  image_dirs:
+    default:
+      path: data/images
+      type: vv
+  models_dir: data/models
